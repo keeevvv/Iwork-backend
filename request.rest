@@ -1,0 +1,121 @@
+@baseUrl = http://localhost:3000/api/v1
+@contentType = application/json
+
+# =======================================================
+# SECTION 1: AUTHENTICATION (EMPLOYER)
+# =======================================================
+
+### 1. Register Employer Baru
+POST {{baseUrl}}/register
+Content-Type: {{contentType}}
+
+{
+  "name": "StartUp Maju Jaya",
+  "email": "ceo@majujaya.com",
+  "password": "password123",
+  "role": "EMPLOYER"
+}
+
+### 2. Login Employer (AMBIL TOKENNYA!)
+# @name loginEmployer
+POST {{baseUrl}}/login
+Content-Type: {{contentType}}
+
+{
+  "email": "ceo@majujaya.com",
+  "password": "password123"
+}
+
+#### VARIABLE TOKEN EMPLOYER
+@employerToken = {{loginEmployer.response.body.token}}
+
+
+# =======================================================
+# SECTION 2: JOB POSTING FLOW
+# =======================================================
+
+### 3. Post Job Baru (Status Awal: UNPAID)
+# Pastikan kamu sudah login sebagai Employer
+POST {{baseUrl}}/jobs
+Authorization: Bearer {{employerToken}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Fullstack fronend & backend developer",
+  "description": "Mencari developer handal untuk membangun aplikasi web kami.",
+  "location": "Bandung (Hybrid)",
+  "salary": 9000000,
+  "jobType": "FULL_TIME",
+  "maxApplicants": 1,
+  "deadline": "2027-12-31T23:59:00Z"
+}
+
+# =======================================================
+# SECTION 3: SIMULASI PEMBAYARAN (WEBHOOK CHEAT)
+# =======================================================
+
+### 4. Tembak Webhook Manual (Pura-pura jadi Midtrans)
+# PENTING: Ganti "order_id" di bawah dengan ID yang muncul di terminal servermu
+# contoh: "JOBPOST-1-1732xxxx"
+POST {{baseUrl}}/notifications/midtrans
+Content-Type: {{contentType}}
+
+{
+  "order_id": "GANTI_DENGAN_ORDER_ID_DARI_TERMINAL", 
+  "transaction_status": "settlement",
+  "fraud_status": "accept",
+  "status_code": "200",
+  "gross_amount": "50000.00"
+}
+
+# =======================================================
+# SECTION 4: AUTHENTICATION (WORKER)
+# =======================================================
+
+### 5. Register Worker Baru
+POST {{baseUrl}}/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Budi Si Rajin",
+  "email": "budi@worker.com",
+  "password": "password123",
+  "role": "WORKER"
+}
+
+### 6. Login Worker (AMBIL TOKENNYA!)
+# @name loginWorker
+POST {{baseUrl}}/login
+Content-Type: {{contentType}}
+
+{
+  "email": "budi@worker.com",
+  "password": "password123"
+}
+
+#### VARIABLE TOKEN WORKER
+@workerToken = {{loginWorker.response.body.token}}
+
+
+# =======================================================
+# SECTION 5: APPLY JOB FLOW
+# =======================================================
+
+### 7. Worker Melamar Pekerjaan
+# Ganti angka '1' di URL dengan ID Job yang valid
+POST {{baseUrl}}/jobs/2/apply
+Authorization: Bearer {{workerToken}}
+Content-Type: {{contentType}}
+
+{} 
+# ^^^ PENTING: Kurung kurawal kosong ini wajib ada agar tidak error "Bad Request"
+
+
+# =======================================================
+# SECTION 6: EMPLOYER REVIEW
+# =======================================================
+
+### 8. Employer Melihat Pelamar
+# Ganti angka '1' di URL dengan ID Job yang valid
+GET {{baseUrl}}/jobs/2/applicants
+Authorization: Bearer {{employerToken}}

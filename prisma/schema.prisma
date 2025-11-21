@@ -1,0 +1,273 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------------
+// ENUMS (Pilihan Tetap)
+// --------------------------------------------------------
+
+enum UserRole {
+  EMPLOYER
+  WORKER
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  FREELANCE
+  INTERNSHIP
+}
+
+enum JobStatus {
+  UNPAID  // Belum dibayar iklan
+  OPEN    // Tayang
+  CLOSED  // Ditutup (deadline lewat / penuh / manual close)
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
+enum QuestTier {
+  ENTRY
+  MID
+  HIGH
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum PaymentType {
+  JOB_POST          // Bayar per posting lowongan
+  QUEST_QUOTA       // Beli kuota posting quest (eceran)
+  QUEST_SUBSCRIPTION // Langganan bulanan
+}
+
+// --------------------------------------------------------
+// MODEL UTAMA: USER, EMPLOYER, WORKER
+// --------------------------------------------------------
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole
+  createdAt DateTime @default(now())
+
+  employer Employer?
+  worker   Worker?
+  payments Payment[] // History pembayaran user ini
+}
+
+model Employer {
+  id     Int  @id @default(autoincrement())
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @unique
+
+  jobs              Job[]
+  quests            Quest[]
+  oneTimeQuotas     OneTimeQuota[]
+  subscriptionPlans SubscriptionQuota[]
+}
+
+model Worker {
+  id     Int  @id @default(autoincrement())
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @unique
+
+  applications JobApplication[] // Lamaran kerja
+  submissions  QuestSubmission[] // Misi yang dikerjakan
+  portfolios   Portfolio[]
+}
+
+// --------------------------------------------------------
+// BAGIAN: JOBS (LOWONGAN KERJA)
+// --------------------------------------------------------
+
+model Job {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  
+  // Detail Pekerjaan
+  location    String    // e.g. "Jakarta Selatan" / "Remote"
+  salary      Int       // Gaji yang ditawarkan
+  jobType     JobType   // FULL_TIME, FREELANCE, etc.
+  
+  // Status & Limitasi
+  status        JobStatus @default(UNPAID)
+  maxApplicants Int?      @default(50) // Kuota pelamar
+  deadline      DateTime?              // Tanggal tutup lamaran
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relasi
+  employer    Employer @relation(fields: [employerId], references: [id])
+  employerId  Int
+
+  payment     Payment? @relation(fields: [paymentId], references: [id])
+  paymentId   Int?     @unique // 1 Job = 1 Transaksi Pembayaran Iklan
+
+  applications JobApplication[]
+}
+
+model JobApplication {
+  id        Int      @id @default(autoincrement())
+  
+  job       Job      @relation(fields: [jobId], references: [id])
+  jobId     Int
+
+  worker    Worker   @relation(fields: [workerId], references: [id])
+  workerId  Int
+
+  status    ApplicationStatus @default(PENDING)
+
+  appliedAt DateTime          @default(now())
+
+  // Constraint: Worker cuma bisa apply 1x di job yang sama
+  @@unique([jobId, workerId])
+}
+
+// --------------------------------------------------------
+// BAGIAN: QUESTS (MISI / GIGS)
+// --------------------------------------------------------
+
+model Quest {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  tier        QuestTier
+  
+  // Limitasi Quest
+  maxSubmissions Int?      @default(10)
+  deadline       DateTime?
+
+  createdAt   DateTime  @default(now())
+
+  employer    Employer @relation(fields: [employerId], references: [id])
+  employerId  Int
+
+  // Quest menggunakan Kuota (Sistem langganan/beli paket)
+  usedOneTimeQuotaId      Int?
+  usedSubscriptionQuotaId Int?
+  usedOneTimeQuota        OneTimeQuota?      @relation(fields: [usedOneTimeQuotaId], references: [id])
+  usedSubscriptionQuota   SubscriptionQuota? @relation(fields: [usedSubscriptionQuotaId], references: [id])
+
+  submissions QuestSubmission[]
+  portfolios  Portfolio[]
+}
+
+model QuestSubmission {
+  id       Int    @id @default(autoincrement())
+  
+  worker   Worker @relation(fields: [workerId], references: [id])
+  workerId Int
+
+  quest    Quest  @relation(fields: [questId], references: [id])
+  questId  Int
+
+  submittedAt DateTime @default(now())
+  fileUrl     String?  // Bukti pengerjaan (Link Google Drive/Image)
+  isApproved  Boolean  @default(false)
+
+  // [FITUR RATING & REVIEW]
+  rating      Int?     // 1 - 5 Bintang
+  feedback    String?  // Komentar Employer ("Good Job!", dll)
+
+  portfolio   Portfolio?
+}
+
+// --------------------------------------------------------
+// BAGIAN: PORTFOLIO (AUTO GENERATED)
+// --------------------------------------------------------
+
+model Portfolio {
+  id       Int    @id @default(autoincrement())
+  worker   Worker @relation(fields: [workerId], references: [id])
+  workerId Int
+  
+  points   Int    @default(0) // Poin reputasi
+
+  quest    Quest  @relation(fields: [questId], references: [id])
+  questId  Int
+
+  submission   QuestSubmission @relation(fields: [submissionId], references: [id])
+  submissionId Int             @unique
+
+  createdAt DateTime @default(now())
+}
+
+// --------------------------------------------------------
+// BAGIAN: FINANCE & PAYMENTS
+// --------------------------------------------------------
+
+model Payment {
+  id     Int           @id @default(autoincrement())
+  
+  user   User          @relation(fields: [userId], references: [id])
+  userId Int           // Siapa yang bayar
+
+  amount Int
+  status PaymentStatus @default(PENDING)
+  type   PaymentType   
+  
+  // Payment Gateway Info (Midtrans)
+  snapToken     String? // Token transaksi midtrans
+  paymentUrl    String? // Link redirect midtrans
+
+  createdAt DateTime @default(now())
+
+  // Relasi ke Item yang dibayar (Salah satu harus terisi sesuai Type)
+  job          Job?
+  oneTimeQuota OneTimeQuota?
+  subscription SubscriptionQuota?
+}
+
+model OneTimeQuota {
+  id         Int      @id @default(autoincrement())
+  employer   Employer @relation(fields: [employerId], references: [id])
+  employerId Int
+
+  remaining Int      @default(1) // Beli 5 kuota, berkurang tiap posting quest
+  createdAt DateTime @default(now())
+
+  payment   Payment @relation(fields: [paymentId], references: [id])
+  paymentId Int     @unique
+
+  quests    Quest[]
+}
+
+model SubscriptionQuota {
+  id         Int      @id @default(autoincrement())
+  employer   Employer @relation(fields: [employerId], references: [id])
+  employerId Int
+
+  tier        QuestTier
+  weeklyQuota Int       @default(5)
+  remaining   Int       @default(5) // Reset tiap minggu
+
+  isActive Boolean  @default(true)
+  renewsAt DateTime
+
+  createdAt DateTime @default(now())
+
+  payment   Payment @relation(fields: [paymentId], references: [id])
+  paymentId Int     @unique
+
+  quests    Quest[]
+}
