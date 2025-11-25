@@ -107,3 +107,59 @@ export const getJobApplicants = async (req, res) => {
     res.status(500).json({ message: "Server Error." });
   }
 };
+
+// ========================================================
+// 3. EMPLOYER UPDATE STATUS (TERIMA / TOLAK)
+// ========================================================
+export const updateApplicationStatus = async (req, res) => {
+  try {
+    const { applicationId } = req.params; // ID Lamaran (bukan ID Job)
+    const { status } = req.body;          // "ACCEPTED" atau "REJECTED"
+    const employerId = req.employerId;    // Dari Middleware
+
+    // 1. Validasi Input Status
+    // Harus sesuai dengan Enum ApplicationStatus di Prisma
+    const validStatuses = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        message: `Status tidak valid. Pilih salah satu: ${validStatuses.join(', ')}` 
+      });
+    }
+
+    // 2. Cari Lamaran + Include Job (untuk cek pemilik)
+    const application = await prisma.jobApplication.findUnique({
+      where: { id: parseInt(applicationId) },
+      include: { 
+        job: true // Kita butuh data job untuk cek employerId
+      }
+    });
+
+    if (!application) {
+      return res.status(404).json({ message: "Data lamaran tidak ditemukan." });
+    }
+
+    // 3. Security Check (Validasi Kepemilikan)
+    // Pastikan yang mengubah status adalah pemilik lowongan tersebut
+    if (application.job.employerId !== employerId) {
+      return res.status(403).json({ message: "Anda tidak memiliki hak akses untuk lamaran ini." });
+    }
+
+    // 4. Lakukan Update
+    const updatedApplication = await prisma.jobApplication.update({
+      where: { id: parseInt(applicationId) },
+      data: { status: status }
+    });
+
+    // (Opsional) Di sini nanti bisa tambahkan notifikasi email ke Worker
+    // sendEmailToWorker(workerEmail, "Selamat! Lamaran Anda diterima.");
+
+    return res.status(200).json({
+      message: `Status lamaran berhasil diubah menjadi ${status}`,
+      data: updatedApplication
+    });
+
+  } catch (error) {
+    console.error("Update App Status Error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan server." });
+  }
+};

@@ -77,7 +77,7 @@ model Employer {
   id     Int  @id @default(autoincrement())
   user   User @relation(fields: [userId], references: [id])
   userId Int  @unique
-
+  onetimeQuota  Int  @default(0)
   jobs              Job[]
   quests            Quest[]
   oneTimeQuotas     OneTimeQuota[]
@@ -248,6 +248,7 @@ model OneTimeQuota {
 
   payment   Payment @relation(fields: [paymentId], references: [id])
   paymentId Int     @unique
+  isActive  Boolean  @default(false)
 
   quests    Quest[]
 }
@@ -263,6 +264,7 @@ model SubscriptionQuota {
 
   isActive Boolean  @default(true)
   renewsAt DateTime
+  resetAt  DateTime?
 
   createdAt DateTime @default(now())
 

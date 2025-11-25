@@ -122,3 +122,73 @@ export const createJob = async (req, res) => {
     res.status(500).json({ message: "Terjadi kesalahan server." });
   }
 };
+
+// ... import yang sudah ada
+
+export const getAllJobs = async (req, res) => {
+  try {
+    const { search, location, type, page = 1, limit = 10 } = req.query;
+
+    // 1. Build Query 'Where'
+    const whereClause = {
+      status: 'OPEN' // Hanya tampilkan yang sudah dibayar & aktif
+    };
+
+    // Filter Search (Judul)
+    if (search) {
+      whereClause.title = {
+        contains: search,
+       
+      };
+    }
+
+    // Filter Lokasi
+    if (location) {
+      whereClause.location = {
+        contains: location,
+       
+      };
+    }
+
+    // Filter Tipe (FULL_TIME, FREELANCE, dll)
+    if (type) {
+      whereClause.jobType = type;
+    }
+
+    // 2. Hitung Skip untuk Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // 3. Ambil Data
+    const jobs = await prisma.job.findMany({
+      where: whereClause,
+      take: parseInt(limit),
+      skip: skip,
+      orderBy: { createdAt: 'desc' }, // Terlama di bawah
+      include: {
+        employer: {
+          include: {
+            user: { select: { name: true, email: true } } // Tampilkan nama perusahaan
+          }
+        },
+        _count: { select: { applications: true } } // Tampilkan jumlah pelamar saat ini
+      }
+    });
+
+    // Hitung total untuk info pagination
+    const totalJobs = await prisma.job.count({ where: whereClause });
+
+    return res.status(200).json({
+      message: "Berhasil mengambil daftar pekerjaan.",
+      meta: {
+        page: parseInt(page),
+        totalData: totalJobs,
+        totalPage: Math.ceil(totalJobs / parseInt(limit))
+      },
+      data: jobs
+    });
+
+  } catch (error) {
+    console.error("Get All Jobs Error:", error);
+    res.status(500).json({ message: "Server Error." });
+  }
+};

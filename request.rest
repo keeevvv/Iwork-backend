@@ -103,7 +103,7 @@ Content-Type: {{contentType}}
 
 ### 7. Worker Melamar Pekerjaan
 # Ganti angka '1' di URL dengan ID Job yang valid
-POST {{baseUrl}}/jobs/2/apply
+POST {{baseUrl}}/jobs/3/apply
 Authorization: Bearer {{workerToken}}
 Content-Type: {{contentType}}
 
@@ -117,5 +117,98 @@ Content-Type: {{contentType}}
 
 ### 8. Employer Melihat Pelamar
 # Ganti angka '1' di URL dengan ID Job yang valid
-GET {{baseUrl}}/jobs/2/applicants
+GET {{baseUrl}}/jobs/3/applicants
 Authorization: Bearer {{employerToken}}
+
+# =======================================================
+# SECTION 7: EMPLOYER DECISION (ACCEPT / REJECT)
+# =======================================================
+
+### 9. Employer Menerima Pelamar (ACCEPTED)
+# Ganti angka '1' di URL dengan ID APPLICATION (Dapat dari response request No. 8)
+PATCH {{baseUrl}}/applications/1/status
+Authorization: Bearer {{employerToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "ACCEPTED"
+}
+
+### 10. Employer Menolak Pelamar (REJECTED)
+# Gunakan ID Application yang berbeda atau reset database jika ingin tes ulang
+PATCH {{baseUrl}}/applications/1/status
+Authorization: Bearer {{employerToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "REJECTED"
+}
+
+
+### 11. Beli Paket Langganan (ENTRY / MID / HIGH)
+POST {{baseUrl}}/subscriptions
+Authorization: Bearer {{employerToken}}
+Content-Type: {{contentType}}
+
+{
+  "tier": "MID"
+}
+
+# =======================================================
+# SECTION 9: BUY ONE-TIME QUOTA (ECERAN)
+# =======================================================
+
+### 12. Beli Kuota Satuan
+POST {{baseUrl}}/quotas
+Authorization: Bearer {{employerToken}}
+Content-Type: {{contentType}}
+
+{
+  "quantity": 10
+}
+
+### Post Quest (Pakai Subscription)
+POST {{baseUrl}}/quests
+Authorization: Bearer {{employerToken}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Buat Logo Vector",
+  "description": "Logo minimalis berbentuk kucing.",
+  "tier": "MID",
+  "maxSubmissions": 5,
+  "deadline": "2024-12-30T00:00:00Z",
+  "quotaType": "SUBSCRIPTION"
+}
+
+### Post Quest (Pakai One Time Quota)
+POST {{baseUrl}}/quests
+Authorization: Bearer {{employerToken}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Translate Artikel Inggris-Indo",
+  "description": "Artikel teknologi 500 kata.",
+  "tier": "ENTRY",
+  "maxSubmissions": 10,
+  "deadline": "2024-12-25T00:00:00Z",
+  "quotaType": "ONE_TIME"
+}
+
+# =======================================================
+# SECTION: PUBLIC BROWSING (JOBS & QUESTS)
+# =======================================================
+
+### 1. Ambil Semua Job (Tanpa Filter)
+GET {{baseUrl}}/jobs
+
+### 2. Cari Job Spesifik (Filter)
+# Mencari job dengan kata "Backend", lokasi "Bandung", Tipe "FULL_TIME"
+GET {{baseUrl}}/jobs?search=Backend&location=Bandung&type=FULL_TIME
+
+### 3. Ambil Semua Quest (Tanpa Filter)
+GET {{baseUrl}}/quests
+
+### 4. Cari Quest Spesifik
+# Mencari quest dengan Tier "MID" dan halaman ke-1
+GET {{baseUrl}}/quests?tier=MID&page=1&limit=5
