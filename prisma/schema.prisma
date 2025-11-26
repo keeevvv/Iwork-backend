@@ -105,6 +105,8 @@ model Job {
   
   // Detail Pekerjaan
   location    String    // e.g. "Jakarta Selatan" / "Remote"
+  latitude    Float?    // Koordinat Latitude
+  longitude   Float?    // Koordinat Longitude
   salary      Int       // Gaji yang ditawarkan
   jobType     JobType   // FULL_TIME, FREELANCE, etc.
   

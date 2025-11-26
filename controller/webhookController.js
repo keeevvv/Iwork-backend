@@ -13,6 +13,7 @@ const apiClient = new midtransClient.CoreApi({
 export const midtransNotification = async (req, res) => {
   try {
     const statusResponse = await apiClient.transaction.notification(req.body);
+    // const statusResponse = req.body; // BYPASS VALIDATION FOR TESTING
     const orderId = statusResponse.order_id;
     const transactionStatus = statusResponse.transaction_status;
     const fraudStatus = statusResponse.fraud_status;

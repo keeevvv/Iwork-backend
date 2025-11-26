@@ -14,7 +14,8 @@ export const createJob = async (req, res) => {
     // 1. Ambil Data dari Body
     const { 
       title, description, location, 
-      salary, jobType, maxApplicants, deadline 
+      salary, jobType, maxApplicants, deadline,
+      latitude, longitude
     } = req.body;
     
     const userId = req.user.id;       // Dari verifyToken
@@ -41,8 +42,11 @@ export const createJob = async (req, res) => {
           jobType,                  // FULL_TIME, FREELANCE, dll
           maxApplicants: maxApplicants ? parseInt(maxApplicants) : 50,
           deadline: deadline ? new Date(deadline) : null,
+          deadline: deadline ? new Date(deadline) : null,
           status: 'UNPAID',
-          employerId: employerId
+          employerId: employerId,
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null
         }
       });
 
@@ -157,25 +161,62 @@ export const getAllJobs = async (req, res) => {
 
     // 2. Hitung Skip untuk Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { userLat, userLong } = req.query;
 
-    // 3. Ambil Data
-    const jobs = await prisma.job.findMany({
-      where: whereClause,
-      take: parseInt(limit),
-      skip: skip,
-      orderBy: { createdAt: 'desc' }, // Terlama di bawah
-      include: {
-        employer: {
-          include: {
-            user: { select: { name: true, email: true } } // Tampilkan nama perusahaan
-          }
-        },
-        _count: { select: { applications: true } } // Tampilkan jumlah pelamar saat ini
-      }
-    });
+    let jobs;
+    let totalJobs;
 
-    // Hitung total untuk info pagination
-    const totalJobs = await prisma.job.count({ where: whereClause });
+    if (userLat && userLong) {
+      // Jika ada koordinat user, ambil semua data dulu untuk sorting distance
+      // Note: Untuk skala besar, sebaiknya gunakan raw query dengan PostGIS/Spatial Index
+      const allJobs = await prisma.job.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          employer: {
+            include: {
+              user: { select: { name: true, email: true } }
+            }
+          },
+          _count: { select: { applications: true } }
+        }
+      });
+
+      const uLat = parseFloat(userLat);
+      const uLong = parseFloat(userLong);
+
+      // Hitung jarak dan sort
+      const jobsWithDistance = allJobs.map(job => {
+        const dist = calculateDistance(uLat, uLong, job.latitude, job.longitude);
+        return { ...job, distance: dist };
+      });
+
+      jobsWithDistance.sort((a, b) => a.distance - b.distance);
+
+      totalJobs = jobsWithDistance.length;
+      
+      // Manual Pagination
+      jobs = jobsWithDistance.slice(skip, skip + parseInt(limit));
+
+    } else {
+      // Logic lama (Database Pagination)
+      jobs = await prisma.job.findMany({
+        where: whereClause,
+        take: parseInt(limit),
+        skip: skip,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          employer: {
+            include: {
+              user: { select: { name: true, email: true } }
+            }
+          },
+          _count: { select: { applications: true } }
+        }
+      });
+
+      totalJobs = await prisma.job.count({ where: whereClause });
+    }
 
     return res.status(200).json({
       message: "Berhasil mengambil daftar pekerjaan.",
@@ -192,3 +233,25 @@ export const getAllJobs = async (req, res) => {
     res.status(500).json({ message: "Server Error." });
   }
 };
+
+// Helper: Haversine Formula
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  if (lat2 === null || lon2 === null) return Infinity; // Job tanpa lokasi dianggap sangat jauh
+  
+  const R = 6371; // Radius bumi dalam KM
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+    
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  const d = R * c; 
+  return d;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI/180);
+}

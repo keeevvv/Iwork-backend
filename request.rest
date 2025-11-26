@@ -44,6 +44,8 @@ Content-Type: {{contentType}}
   "title": "Fullstack fronend & backend developer",
   "description": "Mencari developer handal untuk membangun aplikasi web kami.",
   "location": "Bandung (Hybrid)",
+  "latitude": -6.8,
+  "longitude": 107.8,
   "salary": 9000000,
   "jobType": "FULL_TIME",
   "maxApplicants": 1,
@@ -212,3 +214,8 @@ GET {{baseUrl}}/quests
 ### 4. Cari Quest Spesifik
 # Mencari quest dengan Tier "MID" dan halaman ke-1
 GET {{baseUrl}}/quests?tier=MID&page=1&limit=5
+
+### 4. Cari Quest Spesifik
+# Mencari quest dengan Tier "MID" dan halaman ke-1
+
+GET {{baseUrl}}/jobs?userLat=-6.8&userLong=107.81
