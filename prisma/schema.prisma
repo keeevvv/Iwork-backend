@@ -174,6 +174,17 @@ model Quest {
   portfolios  Portfolio[]
 }
 
+
+// ... (previous enums)
+
+enum SubmissionStatus {
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+// ... (previous models)
+
 model QuestSubmission {
   id       Int    @id @default(autoincrement())
   
@@ -185,7 +196,9 @@ model QuestSubmission {
 
   submittedAt DateTime @default(now())
   fileUrl     String?  // Bukti pengerjaan (Link Google Drive/Image)
-  isApproved  Boolean  @default(false)
+  
+  status      SubmissionStatus @default(IN_PROGRESS)
+  isApproved  Boolean? // null = belum dinilai, false = ditolak, true = diterima
 
   // [FITUR RATING & REVIEW]
   rating      Int?     // 1 - 5 Bintang
@@ -213,6 +226,7 @@ model Portfolio {
 
   createdAt DateTime @default(now())
 }
+
 
 // --------------------------------------------------------
 // BAGIAN: FINANCE & PAYMENTS

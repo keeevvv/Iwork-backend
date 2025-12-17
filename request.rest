@@ -105,7 +105,7 @@ Content-Type: {{contentType}}
 
 ### 7. Worker Melamar Pekerjaan
 # Ganti angka '1' di URL dengan ID Job yang valid
-POST {{baseUrl}}/jobs/3/apply
+POST {{baseUrl}}/jobs/1/apply
 Authorization: Bearer {{workerToken}}
 Content-Type: {{contentType}}
 
@@ -119,7 +119,7 @@ Content-Type: {{contentType}}
 
 ### 8. Employer Melihat Pelamar
 # Ganti angka '1' di URL dengan ID Job yang valid
-GET {{baseUrl}}/jobs/3/applicants
+GET {{baseUrl}}/jobs/1/applicants
 Authorization: Bearer {{employerToken}}
 
 # =======================================================
@@ -189,11 +189,11 @@ Authorization: Bearer {{employerToken}}
 Content-Type: {{contentType}}
 
 {
-  "title": "Translate Artikel Inggris-Indo",
+  "title": "membuat tampilan landing page",
   "description": "Artikel teknologi 500 kata.",
   "tier": "ENTRY",
   "maxSubmissions": 10,
-  "deadline": "2024-12-25T00:00:00Z",
+  "deadline": "2027-12-25T00:00:00Z",
   "quotaType": "ONE_TIME"
 }
 
@@ -219,3 +219,53 @@ GET {{baseUrl}}/quests?tier=MID&page=1&limit=5
 # Mencari quest dengan Tier "MID" dan halaman ke-1
 
 GET {{baseUrl}}/jobs?userLat=-6.8&userLong=107.81
+
+# =======================================================
+# SECTION 10: WORKER QUEST ACTIONS
+# =======================================================
+
+### 13. Worker Memulai Quest (Status: IN_PROGRESS)
+# Ganti angka ID Quest yang valid (misal: 1)
+POST {{baseUrl}}/quests/3/start
+Authorization: Bearer {{workerToken}}
+Content-Type: {{contentType}}
+
+{}
+
+### 14. Worker Submit Quest (Upload File)
+# Request ini mensimulasikan upload file text sederhana.
+# Pastikan ID Quest sama dengan yang di-start (misal: 1)
+POST {{baseUrl}}/quests/3/submit
+Authorization: Bearer {{workerToken}}
+Content-Type: multipart/form-data; boundary=MfnBound
+
+--MfnBound
+Content-Disposition: form-data; name="file"; filename="submission.txt"
+Content-Type: text/plain
+
+Ini adalah hasil pengerjaan quest saya.
+--MfnBound--
+
+# =======================================================
+# SECTION 11: EMPLOYER ASSESSMENT & PORTFOLIO
+# =======================================================
+
+### 15. Employer Menilai Submission (Assess)
+# Ganti ID SUBMISSION (Cek response submit atau DB, misal: 1)
+PATCH {{baseUrl}}/submissions/2/assess
+Authorization: Bearer {{employerToken}}
+Content-Type: {{contentType}}
+
+{
+  "isApproved": false,
+  "rating": 1,
+  "feedback": "Hasil tidak memuaskan, quest tidak sesuai dengan deskripsi."
+}
+
+### 16. Lihat Portfolio User (All)
+# Ganti angka 2 dengan UserID yang valid (Worker)
+GET {{baseUrl}}/portfolios/2
+
+### 17. Lihat Detail Portfolio User
+# Ganti angka 2 dengan UserID, dan 1 dengan PortfolioID
+GET {{baseUrl}}/portfolios/2/1
