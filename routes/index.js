@@ -15,7 +15,7 @@ import {
 import { midtransNotification } from "../controller/webhookController.js";
 import { buySubscription } from "../controller/subscriptionController.js";
 import { buyOneTimeQuota } from "../controller/quotaController.js.js";
-import { createQuest, getAllQuests, startQuest, submitQuest, assessSubmission } from "../controller/questController.js";
+import { createQuest, getAllQuests, startQuest, submitQuest, assessSubmission, getWorkerSubmissions, getEmployerQuestsWithSubmissions, updateQuest, deleteQuest } from "../controller/questController.js";
 import { getUserPortfolios, getUserPortfolioById } from "../controller/portfolioController.js";
 import multer from "multer";
 import path from "path";
@@ -68,10 +68,14 @@ router.post("/api/v1/quotas", verifyToken, verifyEmployer, buyOneTimeQuota);
 // QUESTS
 router.post("/api/v1/quests", verifyToken, verifyEmployer, createQuest);
 router.get("/api/v1/quests", getAllQuests);
+router.get("/api/v1/quests/my-submissions", verifyToken, verifyWorker, getWorkerSubmissions);
+router.get("/api/v1/quests/employer-submissions", verifyToken, verifyEmployer, getEmployerQuestsWithSubmissions);
 
 router.post("/api/v1/quests/:questId/start", verifyToken, verifyWorker, startQuest);
 router.post("/api/v1/quests/:questId/submit", verifyToken, verifyWorker, upload.single("file"), submitQuest);
-router.patch("/api/v1/submissions/:id/assess", verifyToken, verifyEmployer, assessSubmission);
+router.put("/api/v1/submissions/:id/assess", verifyToken, verifyEmployer, assessSubmission);
+router.put("/api/v1/quests/:questId", verifyToken, verifyEmployer, updateQuest);
+router.delete("/api/v1/quests/:questId", verifyToken, verifyEmployer, deleteQuest);
 
 // PORTFOLIOS
 // PORTFOLIOS

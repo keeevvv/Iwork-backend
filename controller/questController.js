@@ -365,3 +365,162 @@ export const assessSubmission = async (req, res) => {
     return res.status(500).json({ message: "Gagal menilai submission." });
   }
 };
+
+// ============================================
+// 4. GET WORKER SUBMISSIONS (My Quests)
+// ============================================
+export const getWorkerSubmissions = async (req, res) => {
+  try {
+    const workerId = req.workerId;
+
+    const submissions = await prisma.questSubmission.findMany({
+      where: { workerId: workerId },
+      include: {
+        quest: {
+          include: {
+            employer: {
+              include: {
+                user: { select: { name: true } }
+              }
+            }
+          }
+        }
+      },
+      orderBy: { submittedAt: 'desc' }
+    });
+
+    return res.status(200).json({
+      message: "Berhasil mengambil submission.",
+      data: submissions
+    });
+
+  } catch (error) {
+    console.error("Get Worker Submissions Error:", error);
+    return res.status(500).json({ message: "Gagal mengambil submission." });
+  }
+};
+
+// ============================================
+// 5. GET EMPLOYER QUESTS WITH SUBMISSIONS
+// ============================================
+export const getEmployerQuestsWithSubmissions = async (req, res) => {
+  try {
+    const employerId = req.employerId;
+
+    const quests = await prisma.quest.findMany({
+      where: { employerId: employerId },
+      include: {
+        submissions: {
+          include: {
+            worker: {
+              include: {
+                user: { select: { name: true, email: true } }
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return res.status(200).json({
+      message: "Berhasil mengambil quest dengan submissions.",
+      data: quests
+    });
+
+  } catch (error) {
+    console.error("Get Employer Quests With Submissions Error:", error);
+    return res.status(500).json({ message: "Gagal mengambil data." });
+  }
+};
+
+// ============================================
+// 6. UPDATE QUEST
+// ============================================
+export const updateQuest = async (req, res) => {
+  console.log("Incoming Update Request for ID:", req.params.questId); // LOG THIS
+  console.log("Employer ID from Token:", req.employerId); // LOG THIS
+  try {
+    const { questId } = req.params;
+    const employerId = req.employerId;
+    const { title, description, tier, maxSubmissions, deadline } = req.body;
+
+    // Check if quest exists and belongs to employer
+    const quest = await prisma.quest.findUnique({
+      where: { id: parseInt(questId) }
+    });
+
+    if (!quest) {
+      return res.status(404).json({ message: "Quest tidak ditemukan." });
+    }
+
+    if (quest.employerId !== employerId) {
+      return res.status(403).json({ message: "Anda tidak berhak mengubah quest ini." });
+    }
+
+    // Update quest
+    const updatedQuest = await prisma.quest.update({
+      where: { id: parseInt(questId) },
+      data: {
+        title: title || quest.title,
+        description: description || quest.description,
+        tier: tier || quest.tier,
+        maxSubmissions: maxSubmissions ? parseInt(maxSubmissions) : quest.maxSubmissions,
+        deadline: deadline ? new Date(deadline) : quest.deadline
+      }
+    });
+
+    return res.status(200).json({
+      message: "Quest berhasil diupdate!",
+      data: updatedQuest
+    });
+
+  } catch (error) {
+    console.error("Update Quest Error:", error);
+    return res.status(500).json({ message: "Gagal mengupdate quest." });
+  }
+};
+
+// ============================================
+// 7. DELETE QUEST
+// ============================================
+export const deleteQuest = async (req, res) => {
+  try {
+    const { questId } = req.params;
+    const employerId = req.employerId;
+
+    // Check if quest exists and belongs to employer
+    const quest = await prisma.quest.findUnique({
+      where: { id: parseInt(questId) },
+      include: { submissions: true }
+    });
+
+    if (!quest) {
+      return res.status(404).json({ message: "Quest tidak ditemukan." });
+    }
+
+    if (quest.employerId !== employerId) {
+      return res.status(403).json({ message: "Anda tidak berhak menghapus quest ini." });
+    }
+
+    // Check if there are submissions
+    if (quest.submissions.length > 0) {
+      return res.status(400).json({
+        message: "Tidak dapat menghapus quest yang sudah memiliki submission."
+      });
+    }
+
+    // Delete quest
+    await prisma.quest.delete({
+      where: { id: parseInt(questId) }
+    });
+
+    return res.status(200).json({
+      message: "Quest berhasil dihapus!"
+    });
+
+  } catch (error) {
+    console.error("Delete Quest Error:", error);
+    return res.status(500).json({ message: "Gagal menghapus quest." });
+  }
+};
