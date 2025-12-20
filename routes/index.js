@@ -17,6 +17,7 @@ import { buySubscription } from "../controller/subscriptionController.js";
 import { buyOneTimeQuota } from "../controller/quotaController.js.js";
 import { createQuest, getAllQuests, startQuest, submitQuest, assessSubmission, getWorkerSubmissions, getEmployerQuestsWithSubmissions, updateQuest, deleteQuest } from "../controller/questController.js";
 import { getUserPortfolios, getUserPortfolioById } from "../controller/portfolioController.js";
+import { getEmployerStats } from "../controller/employerController.js";
 import multer from "multer";
 import path from "path";
 
@@ -64,6 +65,9 @@ router.post(
   buySubscription
 );
 router.post("/api/v1/quotas", verifyToken, verifyEmployer, buyOneTimeQuota);
+
+// EMPLOYER
+router.get("/api/v1/employer/stats", verifyToken, verifyEmployer, getEmployerStats);
 
 // QUESTS
 router.post("/api/v1/quests", verifyToken, verifyEmployer, createQuest);
